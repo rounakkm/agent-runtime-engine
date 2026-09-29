@@ -161,8 +161,9 @@ class Tool(ABC):
    - Deterministic echoing for pipeline verification.
 
 2. **`FilesystemTool` (`filesystem`)**:
-   - Operations: `read`, `write`
-   - Restricted strictly to a specified workspace directory (path traversal and absolute paths outside the workspace are blocked).
+   - Operations: `list`, `read`, `write`
+   - Rooted in a dedicated `workspace/` directory.
+   - Enforces workspace isolation: rejects path traversal attempts (e.g. `../outside.txt`) and absolute paths outside the workspace boundary.
 
 3. **`ShellTool` (`shell`)**:
    - Operations: `run`, `exec`, `execute`

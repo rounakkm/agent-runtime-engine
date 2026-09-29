@@ -1,7 +1,7 @@
 """Filesystem tool restricted to a designated workspace directory."""
 
 from pathlib import Path
-from typing import Any, Optional, Set, Union
+from typing import Any, List, Optional, Set, Union
 
 from agent_runtime.errors import OperationNotSupported, ToolExecutionError
 from agent_runtime.tools.base import Tool
@@ -18,11 +18,16 @@ class FilesystemTool(Tool):
 
     @property
     def supported_operations(self) -> Set[str]:
-        return {"read", "write"}
+        return {"list", "list_files", "read", "write"}
 
-    def _resolve_safe_path(self, path_str: str) -> Path:
+    def _resolve_safe_path(self, path_str: str, allow_empty: bool = False) -> Path:
         """Resolve path and enforce workspace boundary."""
-        if not isinstance(path_str, str) or not path_str.strip():
+        if not isinstance(path_str, str):
+            raise ToolExecutionError(f"Argument 'path' must be a string, got {type(path_str).__name__}")
+
+        if not path_str.strip():
+            if allow_empty:
+                return self.workspace_dir
             raise ToolExecutionError("Argument 'path' must be a non-empty string")
 
         raw_path = Path(path_str)
@@ -37,7 +42,7 @@ class FilesystemTool(Tool):
                     f"Access denied: path '{path_str}' resolves outside workspace boundary '{self.workspace_dir}'"
                 )
         except ValueError:
-            # On Windows, is_relative_to may raise ValueError across different drives
+            # Across drives on Windows
             raise ToolExecutionError(
                 f"Access denied: path '{path_str}' is on a different drive or outside workspace '{self.workspace_dir}'"
             )
@@ -51,11 +56,21 @@ class FilesystemTool(Tool):
                 f"Supported operations: {sorted(self.supported_operations)}"
             )
 
+        if not isinstance(arguments, dict):
+            raise ToolExecutionError(f"Arguments must be a dictionary, got {type(arguments).__name__}")
+
+        if operation in {"list", "list_files"}:
+            raw_path = arguments.get("path", "")
+            if raw_path is None:
+                raw_path = ""
+            safe_path = self._resolve_safe_path(raw_path, allow_empty=True)
+            return self._list(safe_path, str(raw_path) if raw_path else ".")
+
         if "path" not in arguments:
             raise ToolExecutionError("Missing required argument 'path'")
 
         path_str = arguments["path"]
-        safe_path = self._resolve_safe_path(path_str)
+        safe_path = self._resolve_safe_path(path_str, allow_empty=False)
 
         if operation == "read":
             return self._read(safe_path, path_str)
@@ -63,6 +78,17 @@ class FilesystemTool(Tool):
             if "content" not in arguments:
                 raise ToolExecutionError("Missing required argument 'content' for write operation")
             return self._write(safe_path, str(arguments["content"]))
+
+    def _list(self, safe_path: Path, display_path: str) -> List[str]:
+        if not safe_path.exists():
+            raise ToolExecutionError(f"Directory not found: '{display_path}'")
+        if not safe_path.is_dir():
+            raise ToolExecutionError(f"Path is not a directory: '{display_path}'")
+
+        try:
+            return sorted([entry.name for entry in safe_path.iterdir()])
+        except Exception as e:
+            raise ToolExecutionError(f"Failed to list directory '{display_path}': {e}")
 
     def _read(self, safe_path: Path, display_path: str) -> str:
         if not safe_path.exists():
