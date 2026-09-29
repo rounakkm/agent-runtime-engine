@@ -1,5 +1,9 @@
 """Agent Runtime Engine (agent-exec) - Minimal Agent Execution Runtime."""
 
+from agent_runtime.capabilities import (
+    Capability,
+    FilesystemCapability,
+)
 from agent_runtime.dispatcher import ToolDispatcher
 from agent_runtime.errors import (
     AgentRuntimeError,
@@ -31,6 +35,8 @@ __all__ = [
     "EchoTool",
     "FilesystemTool",
     "ShellTool",
+    "Capability",
+    "FilesystemCapability",
     "ActionRequest",
     "ExecutionResult",
     "ExecutionStatus",

@@ -132,11 +132,46 @@ Errors are strictly categorized:
 - `InvalidAction`: Malformed action request structure or invalid parameter types.
 - `ToolNotFound`: Requested tool name is not registered.
 - `OperationNotSupported`: Requested operation is not supported by the resolved tool.
-- `ToolExecutionError`: Tool encountered an expected or handled failure during execution (e.g., file not found, path violation, command failure).
+- `ToolExecutionError`: Tool encountered an expected or handled failure during execution (e.g., file not found, path violation, missing capability, command failure).
 
 ---
 
-## 5. Tool Abstraction & Built-In Tools
+## 5. Capability Model
+
+Capabilities explicitly represent the resources and boundaries that an action is authorized to access during execution.
+
+Instead of tools hardcoding global security assumptions or deciding access boundaries independently, an `ActionRequest` carries the explicit capabilities granted to that specific execution step:
+
+```text
+ActionRequest
+    ↓ (capabilities)
+ToolDispatcher
+    ↓
+Tool (e.g., FilesystemTool)
+```
+
+### `FilesystemCapability`
+
+Restricts filesystem tool operations (`read`, `write`, `list`) strictly to a designated root directory:
+
+```python
+fs_cap = FilesystemCapability(root="/path/to/workspace")
+
+req = ActionRequest(
+    action_id="act_001",
+    tool="filesystem",
+    operation="read",
+    arguments={"path": "notes.txt"},
+    capabilities=[fs_cap],
+)
+```
+
+- If an action request does not include a `FilesystemCapability`, filesystem operations are rejected.
+- Paths resolving outside the capability root (including `../` path traversal or external absolute paths) are denied with a `ToolExecutionError`.
+
+---
+
+## 6. Tool Abstraction & Built-In Tools
 
 Every tool implements the `Tool` base class:
 
@@ -174,7 +209,7 @@ class Tool(ABC):
 
 ---
 
-## 6. How to Run Examples
+## 7. How to Run Examples
 
 Execute the basic execution example:
 
@@ -184,7 +219,7 @@ python examples/basic_execution.py
 
 ---
 
-## 7. How to Run Tests
+## 8. How to Run Tests
 
 Run the test suite with pytest:
 
@@ -194,7 +229,7 @@ python -m pytest
 
 ---
 
-## 8. What is Intentionally NOT Implemented Yet
+## 9. What is Intentionally NOT Implemented Yet
 
 To maintain architectural focus on the core execution substrate, the following are intentionally deferred to subsequent phases:
 - LLM / Model integration & prompt management

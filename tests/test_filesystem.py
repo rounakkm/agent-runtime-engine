@@ -195,9 +195,12 @@ def test_unsupported_operation(temp_workspace: FilesystemTool):
 # ---------------------------------------------------------------------------
 
 def test_runtime_pipeline_filesystem_flow(tmp_path: Path):
+    from agent_runtime.capabilities import FilesystemCapability
+
     runtime = AgentRuntime()
-    fs_tool = FilesystemTool(workspace_dir=tmp_path)
+    fs_tool = FilesystemTool()
     runtime.register_tool(fs_tool)
+    fs_cap = FilesystemCapability(root=tmp_path)
 
     # 1. List empty workspace
     res_list_empty = runtime.execute(ActionRequest(
@@ -205,6 +208,7 @@ def test_runtime_pipeline_filesystem_flow(tmp_path: Path):
         tool="filesystem",
         operation="list",
         arguments={},
+        capabilities=[fs_cap],
     ))
     assert res_list_empty.status == ExecutionStatus.SUCCESS
     assert res_list_empty.result == []
@@ -215,6 +219,7 @@ def test_runtime_pipeline_filesystem_flow(tmp_path: Path):
         tool="filesystem",
         operation="write",
         arguments={"path": "notes.md", "content": "# Hello Agent"},
+        capabilities=[fs_cap],
     ))
     assert res_write.status == ExecutionStatus.SUCCESS
     assert res_write.result == "File written successfully"
@@ -225,6 +230,7 @@ def test_runtime_pipeline_filesystem_flow(tmp_path: Path):
         tool="filesystem",
         operation="read",
         arguments={"path": "notes.md"},
+        capabilities=[fs_cap],
     ))
     assert res_read.status == ExecutionStatus.SUCCESS
     assert res_read.result == "# Hello Agent"
@@ -235,6 +241,7 @@ def test_runtime_pipeline_filesystem_flow(tmp_path: Path):
         tool="filesystem",
         operation="list",
         arguments={},
+        capabilities=[fs_cap],
     ))
     assert res_list_pop.status == ExecutionStatus.SUCCESS
     assert res_list_pop.result == ["notes.md"]
@@ -245,6 +252,7 @@ def test_runtime_pipeline_filesystem_flow(tmp_path: Path):
         tool="filesystem",
         operation="read",
         arguments={"path": "../secret_outside.txt"},
+        capabilities=[fs_cap],
     ))
     assert res_escape.status == ExecutionStatus.FAILED
     assert res_escape.error is not None
