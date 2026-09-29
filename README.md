@@ -167,7 +167,10 @@ class Tool(ABC):
 
 3. **`ShellTool` (`shell`)**:
    - Operations: `run`, `exec`, `execute`
-   - Synchronously executes commands within the workspace directory, capturing `stdout`, `stderr`, and `exit_code`.
+   - Synchronously executes shell commands inside the workspace directory using standard library `subprocess`.
+   - Arguments: `command` (string or list of strings).
+   - Returns structured dictionary containing `stdout`, `stderr`, and `exit_code`.
+   - Traps and encapsulates execution failures into the standard `ExecutionResult` model.
 
 ---
 
