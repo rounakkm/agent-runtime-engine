@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
 
+from agent_runtime.capabilities import Capability, FilesystemCapability
 from agent_runtime.errors import AgentRuntimeError, InvalidAction
 
 
@@ -37,8 +38,13 @@ class ActionRequest:
     tool: str
     operation: str
     arguments: dict[str, Any] = field(default_factory=dict)
+    capabilities: list[Capability] = field(default_factory=list)
 
     def __post_init__(self) -> None:
+        if self.arguments is None:
+            self.arguments = {}
+        if self.capabilities is None:
+            self.capabilities = []
         self.validate()
 
     def validate(self) -> None:
@@ -51,6 +57,8 @@ class ActionRequest:
             raise InvalidAction("Field 'operation' must be a non-empty string")
         if not isinstance(self.arguments, dict):
             raise InvalidAction("Field 'arguments' must be a dictionary")
+        if not isinstance(self.capabilities, list):
+            raise InvalidAction("Field 'capabilities' must be a list")
 
     @classmethod
     def from_dict(cls, data: Any) -> "ActionRequest":
@@ -60,17 +68,46 @@ class ActionRequest:
         
         if "action_id" not in data:
             raise InvalidAction("Missing required field 'action_id'")
+        if not isinstance(data["action_id"], str) or not data["action_id"].strip():
+            raise InvalidAction("Field 'action_id' must be a non-empty string")
+            
         if "tool" not in data:
             raise InvalidAction("Missing required field 'tool'")
+        if not isinstance(data["tool"], str) or not data["tool"].strip():
+            raise InvalidAction("Field 'tool' must be a non-empty string")
+            
         if "operation" not in data:
             raise InvalidAction("Missing required field 'operation'")
+        if not isinstance(data["operation"], str) or not data["operation"].strip():
+            raise InvalidAction("Field 'operation' must be a non-empty string")
         
         arguments = data.get("arguments", {})
+        if arguments is None:
+            arguments = {}
+        if not isinstance(arguments, dict):
+            raise InvalidAction("Field 'arguments' must be a dictionary")
+
+        raw_capabilities = data.get("capabilities", [])
+        if raw_capabilities is None:
+            raw_capabilities = []
+        if not isinstance(raw_capabilities, list):
+            raise InvalidAction("Field 'capabilities' must be a list")
+
+        capabilities: list[Capability] = []
+        for cap in raw_capabilities:
+            if isinstance(cap, Capability):
+                capabilities.append(cap)
+            elif isinstance(cap, dict):
+                capabilities.append(Capability.from_dict(cap))
+            else:
+                raise InvalidAction(f"Invalid capability element: {cap}")
+
         return cls(
             action_id=data["action_id"],
             tool=data["tool"],
             operation=data["operation"],
             arguments=arguments,
+            capabilities=capabilities,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -80,6 +117,7 @@ class ActionRequest:
             "tool": self.tool,
             "operation": self.operation,
             "arguments": self.arguments,
+            "capabilities": [c.to_dict() for c in self.capabilities],
         }
 
 

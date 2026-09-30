@@ -58,7 +58,12 @@ class ToolDispatcher:
 
         # Execute tool
         try:
-            output = tool.execute(request.operation, request.arguments)
+            import inspect
+            sig = inspect.signature(tool.execute)
+            if "capabilities" in sig.parameters or any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+                output = tool.execute(request.operation, request.arguments, capabilities=request.capabilities)
+            else:
+                output = tool.execute(request.operation, request.arguments)
             return ExecutionResult.success(action_id=action_id, result=output)
         except (AgentRuntimeError, ToolExecutionError, OperationNotSupported) as e:
             return ExecutionResult.failure(action_id=action_id, error=e)

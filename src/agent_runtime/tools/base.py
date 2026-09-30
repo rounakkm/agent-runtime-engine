@@ -1,7 +1,7 @@
 """Base interface for tools in the Agent Runtime Engine."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Set
+from typing import Any, List, Optional, Set
 
 
 class Tool(ABC):
@@ -16,12 +16,18 @@ class Tool(ABC):
         pass
 
     @abstractmethod
-    def execute(self, operation: str, arguments: dict[str, Any]) -> Any:
-        """Execute the given operation with the provided arguments.
+    def execute(
+        self,
+        operation: str,
+        arguments: dict[str, Any],
+        capabilities: Optional[List[Any]] = None,
+    ) -> Any:
+        """Execute the given operation with the provided arguments and capabilities.
         
         Args:
             operation: Name of the operation to perform.
             arguments: Dictionary of arguments for the operation.
+            capabilities: Optional list of capabilities granted to this execution.
             
         Returns:
             Any structured result returned by the tool.

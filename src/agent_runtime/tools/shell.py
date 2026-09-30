@@ -2,7 +2,7 @@
 
 from pathlib import Path
 import subprocess
-from typing import Any, Optional, Set, Union
+from typing import Any, List, Optional, Set, Union
 
 from agent_runtime.errors import OperationNotSupported, ToolExecutionError
 from agent_runtime.tools.base import Tool
@@ -33,12 +33,24 @@ class ShellTool(Tool):
                 f"Supported operations: {sorted(self.supported_operations)}"
             )
 
+        if not isinstance(arguments, dict):
+            raise ToolExecutionError(f"Arguments must be a dictionary, got {type(arguments).__name__}")
+
         if "command" not in arguments:
             raise ToolExecutionError("Missing required argument 'command' for shell execution")
 
         command = arguments["command"]
         if not isinstance(command, (str, list)):
-            raise ToolExecutionError("Argument 'command' must be a string or list of strings")
+            raise ToolExecutionError(f"Argument 'command' must be a string or list of strings, got {type(command).__name__}")
+
+        if isinstance(command, str) and not command.strip():
+            raise ToolExecutionError("Argument 'command' must be a non-empty string")
+
+        if isinstance(command, list):
+            if len(command) == 0:
+                raise ToolExecutionError("Argument 'command' list cannot be empty")
+            if not all(isinstance(arg, str) for arg in command):
+                raise ToolExecutionError("All elements in argument 'command' list must be strings")
 
         try:
             completed_process = subprocess.run(

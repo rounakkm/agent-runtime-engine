@@ -11,6 +11,7 @@ from agent_runtime import (
     ActionRequest,
     AgentRuntime,
     EchoTool,
+    FilesystemCapability,
     FilesystemTool,
     ShellTool,
 )
@@ -23,11 +24,14 @@ def main() -> None:
     # 2. Register initial tools
     workspace_dir = Path(__file__).resolve().parent.parent / "workspace"
     runtime.register_tool(EchoTool())
-    runtime.register_tool(FilesystemTool(workspace_dir=workspace_dir))
+    runtime.register_tool(FilesystemTool())
     runtime.register_tool(ShellTool(workspace_dir=workspace_dir))
 
     print("Registered tools:", runtime.registry.list_tools())
     print("-" * 50)
+
+    # Capability granting filesystem access to the workspace directory
+    fs_cap = FilesystemCapability(root=workspace_dir)
 
     # 3. Submit echo action
     act_echo = ActionRequest(
@@ -50,6 +54,7 @@ def main() -> None:
             "path": "greeting.txt",
             "content": "Hello from the agent execution runtime!\n",
         },
+        capabilities=[fs_cap],
     )
     result_fs_write = runtime.execute(act_fs_write)
     print(f"[{result_fs_write.action_id}] {result_fs_write.status.value}")
@@ -62,16 +67,30 @@ def main() -> None:
         tool="filesystem",
         operation="read",
         arguments={"path": "greeting.txt"},
+        capabilities=[fs_cap],
     )
     result_fs_read = runtime.execute(act_fs_read)
     print(f"[{result_fs_read.action_id}] {result_fs_read.status.value}")
     print(result_fs_read.result.strip())
     print("-" * 50)
 
-    # 6. Submit shell action
+    # 6. Submit filesystem action (list)
+    act_fs_list = ActionRequest(
+        action_id="act_004",
+        tool="filesystem",
+        operation="list",
+        arguments={},
+        capabilities=[fs_cap],
+    )
+    result_fs_list = runtime.execute(act_fs_list)
+    print(f"[{result_fs_list.action_id}] {result_fs_list.status.value}")
+    print(result_fs_list.result)
+    print("-" * 50)
+
+    # 7. Submit shell action
     # Use standard echo command
     act_shell = ActionRequest(
-        action_id="act_004",
+        action_id="act_005",
         tool="shell",
         operation="run",
         arguments={"command": "echo hello from shell"},
@@ -84,9 +103,9 @@ def main() -> None:
         print(result_shell.result)
     print("-" * 50)
 
-    # 7. Demonstrate structured error handling (unknown tool)
+    # 8. Demonstrate structured error handling (unknown tool)
     act_err = ActionRequest(
-        action_id="act_005",
+        action_id="act_006",
         tool="unknown_tool",
         operation="run",
         arguments={},
